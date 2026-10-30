@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model RequestHistory {
+  id           String   @id @default(cuid())
+  modelId      String
+  modelName    String?
+  prompt       String
+  response     String
+  inputTokens  Int?
+  outputTokens Int?
+  totalTokens  Int?
+  durationMs   Int?
+  createdAt    DateTime @default(now())
+
+  @@index([modelId])
+  @@index([createdAt])
+}
