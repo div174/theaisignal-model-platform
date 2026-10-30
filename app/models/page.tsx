@@ -4,6 +4,7 @@ import React, { useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { listModels, formatContext, formatCurrency } from "@/lib/data";
+import { AIModel } from "@/lib/types";
 import { ModelCard } from "@/components/model-card";
 import { BrandLogo } from "@/components/brand-logo";
 import {
@@ -19,6 +20,12 @@ import {
   FileCode2,
   Lock,
   Unlock,
+  Info,
+  X,
+  Copy,
+  Check,
+  Server,
+  Zap,
 } from "lucide-react";
 
 function ModelsDiscoveryContent() {
@@ -30,13 +37,17 @@ function ModelsDiscoveryContent() {
   const [selectedLab, setSelectedLab] = useState<string>("all");
   const [selectedCapability, setSelectedCapability] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"name" | "price-asc" | "context-desc" | "intelligence-desc">("context-desc");
-  const [viewMode, setViewMode] = useState<"cards" | "table">("table");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
 
   // Selected models for compare tray
   const [comparedModelIds, setComparedModelIds] = useState<string[]>([
     "openai/gpt-6.1-terra",
     "deepseek/deepseek-v4.1-flash-uncensored",
   ]);
+
+  // Model Detail Modal State
+  const [selectedDetailModel, setSelectedDetailModel] = useState<AIModel | null>(null);
+  const [copiedId, setCopiedId] = useState(false);
 
   // Unique Labs for filter dropdown
   const labs = useMemo(() => {
@@ -62,11 +73,16 @@ function ModelsDiscoveryContent() {
     }
   };
 
+  const handleCopyModelId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
+
   // Filtered & Sorted models
   const filteredModels = useMemo(() => {
     return allModels
       .filter((model) => {
-        // Search
         const q = searchQuery.toLowerCase().trim();
         if (q) {
           const matchName = model.name.toLowerCase().includes(q);
@@ -79,12 +95,10 @@ function ModelsDiscoveryContent() {
           }
         }
 
-        // Lab filter
         if (selectedLab !== "all" && model.lab !== selectedLab) {
           return false;
         }
 
-        // Capability filter
         if (selectedCapability === "reasoning" && !model.capabilities.reasoning) return false;
         if (selectedCapability === "toolCalling" && !model.capabilities.toolCalling) return false;
         if (selectedCapability === "vision" && !model.capabilities.vision) return false;
@@ -114,7 +128,7 @@ function ModelsDiscoveryContent() {
             Discover & Explore AI Models
           </h1>
           <p className="text-sm text-slate-500 dark:text-zinc-400 mt-1 max-w-xl">
-            Browse state-of-the-art models, inspect multimodal token economics, and directly deploy into comparison or playground.
+            Browse state-of-the-art models, inspect multimodal token economics, view technical specifications, and directly deploy into comparison or playground.
           </p>
         </div>
 
@@ -243,11 +257,12 @@ function ModelsDiscoveryContent() {
               model={model}
               isCompared={comparedModelIds.includes(model.id)}
               onToggleCompare={handleToggleCompare}
+              onViewDetails={setSelectedDetailModel}
             />
           ))}
         </div>
       ) : (
-        /* Table View matching OneAtlas inspiration */
+        /* Table View */
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[850px] border-collapse text-left text-xs">
@@ -276,9 +291,13 @@ function ModelsDiscoveryContent() {
                           <BrandLogo lab={model.lab} size="sm" />
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-slate-900 dark:text-zinc-100">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDetailModel(model)}
+                                className="font-bold text-slate-900 dark:text-zinc-100 hover:text-emerald-500 hover:underline cursor-pointer text-left"
+                              >
                                 {model.name}
-                              </span>
+                              </button>
                               {model.isNew && (
                                 <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase">
                                   NEW
@@ -370,7 +389,16 @@ function ModelsDiscoveryContent() {
 
                       {/* Actions */}
                       <td className="p-3.5 pr-5 text-right">
-                        <div className="inline-flex items-center gap-2">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDetailModel(model)}
+                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors"
+                            title="View Full Specs"
+                          >
+                            <Info className="w-3.5 h-3.5" />
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => handleToggleCompare(model.id)}
@@ -398,6 +426,214 @@ function ModelsDiscoveryContent() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Model Details Modal */}
+      {selectedDetailModel && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl max-h-[90vh] rounded-2xl border border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 shadow-2xl flex flex-col overflow-hidden animate-in fade-in-0 zoom-in-95 duration-100">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50">
+              <div className="flex items-center gap-3">
+                <BrandLogo lab={selectedDetailModel.lab} size="md" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-zinc-100">
+                      {selectedDetailModel.name}
+                    </h3>
+                    {selectedDetailModel.isNew && (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase">
+                        NEW
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-slate-400 dark:text-zinc-500 font-mono">
+                    {selectedDetailModel.labName} • Released: {selectedDetailModel.releaseDate || "N/A"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCopyModelId(selectedDetailModel.id)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300"
+                >
+                  {copiedId ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                  <span>{copiedId ? "Copied" : "Copy ID"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedDetailModel(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-5">
+              {/* Description */}
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 block mb-1">
+                  Architecture & Description
+                </span>
+                <p className="text-xs text-slate-700 dark:text-zinc-300 leading-relaxed bg-slate-50 dark:bg-zinc-900/60 p-3 rounded-xl border border-slate-100 dark:border-zinc-800">
+                  {selectedDetailModel.description}
+                </p>
+              </div>
+
+              {/* Technical Specifications Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-900/30">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 dark:text-zinc-500 block">
+                    Context Window
+                  </span>
+                  <span className="text-sm font-bold font-mono text-slate-900 dark:text-zinc-100">
+                    {formatContext(selectedDetailModel.context)} tokens
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-900/30">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 dark:text-zinc-500 block">
+                    Max Output Limit
+                  </span>
+                  <span className="text-sm font-bold font-mono text-slate-900 dark:text-zinc-100">
+                    {selectedDetailModel.outputTokensLimit
+                      ? `${formatContext(selectedDetailModel.outputTokensLimit)} tokens`
+                      : "Standard"}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-900/30">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 dark:text-zinc-500 block">
+                    Input Price / 1M
+                  </span>
+                  <span className="text-sm font-bold font-mono text-slate-900 dark:text-zinc-100">
+                    {formatCurrency(selectedDetailModel.cost.input)}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-900/30">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 dark:text-zinc-500 block">
+                    Output Price / 1M
+                  </span>
+                  <span className="text-sm font-bold font-mono text-slate-900 dark:text-zinc-100">
+                    {formatCurrency(selectedDetailModel.cost.output)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Benchmarks */}
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 block mb-2">
+                  Performance Benchmarks
+                </span>
+                <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-900/30">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-500 dark:text-zinc-400">Intelligence</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-zinc-100">
+                        {selectedDetailModel.intelligence ?? "N/A"}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full"
+                        style={{ width: `${Math.min(100, ((selectedDetailModel.intelligence ?? 0) / 70) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-500 dark:text-zinc-400">Coding</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-zinc-100">
+                        {selectedDetailModel.coding ?? "N/A"}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-blue-500 h-full rounded-full"
+                        style={{ width: `${Math.min(100, ((selectedDetailModel.coding ?? 0) / 70) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-500 dark:text-zinc-400">Agentic</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-zinc-100">
+                        {selectedDetailModel.agentic ?? "N/A"}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-purple-500 h-full rounded-full"
+                        style={{ width: `${Math.min(100, ((selectedDetailModel.agentic ?? 0) / 70) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Providers */}
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 block mb-1.5">
+                  Active Hosting Providers
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {selectedDetailModel.providers.map((p) => (
+                    <span
+                      key={p}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono bg-slate-100 text-slate-700 dark:bg-zinc-900 dark:text-zinc-300 border border-slate-200 dark:border-zinc-800 capitalize"
+                    >
+                      <Server className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" />
+                      <span>{p}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-4 border-t border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  handleToggleCompare(selectedDetailModel.id);
+                }}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                  comparedModelIds.includes(selectedDetailModel.id)
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
+                }`}
+              >
+                <Scale className="w-4 h-4" />
+                <span>
+                  {comparedModelIds.includes(selectedDetailModel.id)
+                    ? "In Comparison"
+                    : "Add to Comparison"}
+                </span>
+              </button>
+
+              <Link
+                href={`/playground?model=${encodeURIComponent(selectedDetailModel.id)}`}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold bg-emerald-500 text-slate-950 hover:bg-emerald-400 dark:bg-emerald-400 dark:hover:bg-emerald-300 shadow-xs transition-colors"
+              >
+                <Zap className="w-4 h-4" />
+                <span>Try in Playground</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
         </div>
       )}

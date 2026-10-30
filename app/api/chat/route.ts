@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { callOpenRouterAI, ChatCompletionMessage } from "@/lib/ai-provider";
+import { callOpenRouterAI, callOpenRouterAIStream, ChatCompletionMessage } from "@/lib/ai-provider";
 import { getModel } from "@/lib/data";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { model, messages, temperature } = body;
+    const { model, messages, temperature, stream = true } = body;
 
     // 1. Validate incoming payload structure
     if (!model || typeof model !== "string" || !model.trim()) {
@@ -53,7 +53,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Find the latest user message to check for empty prompt
     const latestUserMsg = [...formattedMessages].reverse().find((m) => m.role === "user");
     if (!latestUserMsg || !latestUserMsg.content.trim()) {
       return NextResponse.json(
@@ -62,11 +61,83 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Look up model metadata for human-readable name
     const modelMeta = getModel(model);
     const modelName = modelMeta?.name || model;
 
-    // 3. Call OpenRouter AI provider
+    // 3. Streaming Mode (default)
+    if (stream) {
+      const streamResult = await callOpenRouterAIStream({
+        modelId: model,
+        messages: formattedMessages,
+        temperature: typeof temperature === "number" ? temperature : 0.7,
+      });
+
+      if (!streamResult.success || !streamResult.stream) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: streamResult.error || "Failed to initialize AI stream from provider.",
+          },
+          { status: 502 }
+        );
+      }
+
+      const startTime = Date.now();
+      let accumulatedText = "";
+      const decoder = new TextDecoder();
+
+      const transformStream = new TransformStream({
+        transform(chunk, controller) {
+          controller.enqueue(chunk);
+          try {
+            const text = decoder.decode(chunk, { stream: true });
+            const lines = text.split("\n");
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
+                try {
+                  const parsed = JSON.parse(trimmed.slice(6));
+                  const delta = parsed.choices?.[0]?.delta?.content;
+                  if (delta) accumulatedText += delta;
+                } catch {
+                  // ignore JSON parse error in sub-chunk
+                }
+              }
+            }
+          } catch {
+            // ignore decode error
+          }
+        },
+        async flush() {
+          const durationMs = Date.now() - startTime;
+          if (accumulatedText.trim()) {
+            try {
+              await db.requestHistory.create({
+                data: {
+                  modelId: model,
+                  modelName,
+                  prompt: latestUserMsg.content,
+                  response: accumulatedText,
+                  durationMs,
+                },
+              });
+            } catch (dbErr) {
+              console.error("Database save warning during stream flush:", dbErr);
+            }
+          }
+        },
+      });
+
+      return new Response(streamResult.stream.pipeThrough(transformStream), {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
+    }
+
+    // 4. Non-Streaming Fallback
     const aiResult = await callOpenRouterAI({
       modelId: model,
       messages: formattedMessages,
@@ -86,13 +157,12 @@ export async function POST(req: NextRequest) {
 
     const aiContent = aiResult.content || "";
 
-    // 4. Save successful request and response to database
     let historyRecord = null;
     try {
       historyRecord = await db.requestHistory.create({
         data: {
           modelId: model,
-          modelName: modelName,
+          modelName,
           prompt: latestUserMsg.content,
           response: aiContent,
           inputTokens: aiResult.inputTokens ?? null,
@@ -103,7 +173,6 @@ export async function POST(req: NextRequest) {
       });
     } catch (dbErr) {
       console.error("Database save warning:", dbErr);
-      // We still return the AI response even if saving to DB fails
     }
 
     return NextResponse.json({

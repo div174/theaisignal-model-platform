@@ -12,27 +12,39 @@ import {
   Wrench,
   Eye,
   FileCode2,
+  Info,
 } from "lucide-react";
 
 interface ModelCardProps {
   model: AIModel;
   onToggleCompare?: (modelId: string) => void;
+  onViewDetails?: (model: AIModel) => void;
   isCompared?: boolean;
 }
 
-export function ModelCard({ model, onToggleCompare, isCompared }: ModelCardProps) {
+export function ModelCard({
+  model,
+  onToggleCompare,
+  onViewDetails,
+  isCompared,
+}: ModelCardProps) {
   return (
     <div className="group relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:border-slate-300 hover:shadow-md dark:border-zinc-800/80 dark:bg-zinc-900/60 dark:hover:border-zinc-700 dark:hover:bg-zinc-900">
       <div>
         {/* Top Header */}
         <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <BrandLogo lab={model.lab} size="md" />
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-slate-900 dark:text-zinc-100 text-sm group-hover:text-emerald-500 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => onViewDetails?.(model)}
+                  className="font-bold text-slate-900 dark:text-zinc-100 text-sm group-hover:text-emerald-500 transition-colors text-left truncate cursor-pointer hover:underline"
+                  title="View detailed specs"
+                >
                   {model.name}
-                </h3>
+                </button>
                 {model.isNew && (
                   <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase">
                     NEW
@@ -44,11 +56,22 @@ export function ModelCard({ model, onToggleCompare, isCompared }: ModelCardProps
                   </span>
                 )}
               </div>
-              <span className="text-xs text-slate-400 dark:text-zinc-500 font-mono">
+              <span className="text-xs text-slate-400 dark:text-zinc-500 font-mono truncate block">
                 {model.labName} • {model.id}
               </span>
             </div>
           </div>
+
+          {onViewDetails && (
+            <button
+              type="button"
+              onClick={() => onViewDetails(model)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 transition-colors shrink-0"
+              title="View full model details"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Description */}

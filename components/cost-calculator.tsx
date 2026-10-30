@@ -154,7 +154,7 @@ export function CostCalculator({ models, className = "" }: CostCalculatorProps) 
 
           <input
             type="range"
-            min="100000"
+            min="0"
             max="50000000"
             step="250000"
             value={inputTokens}
@@ -163,7 +163,7 @@ export function CostCalculator({ models, className = "" }: CostCalculatorProps) 
           />
 
           <div className="flex justify-between text-[11px] text-slate-400 dark:text-zinc-500 font-mono">
-            <span>100K</span>
+            <span>0</span>
             <span className="font-semibold text-slate-700 dark:text-zinc-300">
               {formatTokens(inputTokens)} tokens (~{(inputTokens / 1000000).toFixed(2)}M)
             </span>
@@ -192,7 +192,7 @@ export function CostCalculator({ models, className = "" }: CostCalculatorProps) 
 
           <input
             type="range"
-            min="50000"
+            min="0"
             max="15000000"
             step="100000"
             value={outputTokens}
@@ -201,7 +201,7 @@ export function CostCalculator({ models, className = "" }: CostCalculatorProps) 
           />
 
           <div className="flex justify-between text-[11px] text-slate-400 dark:text-zinc-500 font-mono">
-            <span>50K</span>
+            <span>0</span>
             <span className="font-semibold text-slate-700 dark:text-zinc-300">
               {formatTokens(outputTokens)} tokens (~{(outputTokens / 1000000).toFixed(2)}M)
             </span>

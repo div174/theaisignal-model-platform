@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense, useTransition } from "react";
+import React, { useState, useEffect, useRef, Suspense, useTransition } from "react";
 import { useSearchParams, usePathname } from "next/navigation";
 import { listModels } from "@/lib/data";
 import { AIModel } from "@/lib/types";
@@ -41,18 +41,42 @@ function CompareContent() {
     parseModelIdsFromParams(searchParams.get("models"), allModels)
   );
 
-  // Sync selected models to URL query string without full page reload (replaceState)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced URL state synchronization with replaceState
   const syncUrl = (newIds: string[]) => {
-    startTransition(() => {
-      const params = new URLSearchParams();
-      if (newIds.length > 0) {
-        params.set("models", newIds.join(","));
-      }
-      const newQuery = params.toString();
-      const newUrl = newQuery ? `${pathname}?${newQuery}` : pathname;
-      window.history.replaceState(null, "", newUrl);
-    });
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      startTransition(() => {
+        const params = new URLSearchParams();
+        if (newIds.length > 0) {
+          params.set("models", newIds.join(","));
+        }
+        const newQuery = params.toString();
+        const newUrl = newQuery ? `${pathname}?${newQuery}` : pathname;
+        window.history.replaceState(null, "", newUrl);
+      });
+    }, 150); // 150ms debounce
   };
+
+  // Listen to popstate event (browser back and forward buttons)
+  useEffect(() => {
+    const handlePopState = () => {
+      const currentQuery = new URLSearchParams(window.location.search).get("models");
+      const parsed = parseModelIdsFromParams(currentQuery, allModels);
+      setSelectedIds(parsed);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [allModels]);
 
   const handleSelectModel = (modelId: string) => {
     if (selectedIds.length >= 4) return;
@@ -138,23 +162,32 @@ function CompareContent() {
         />
       </section>
 
-      {/* 2. Interactive Real-Time Cost Estimator */}
-      {selectedModels.length > 0 && (
-        <section>
-          <CostCalculator models={selectedModels} />
+      {/* 2. Interactive Real-Time Cost Estimator & Comparison Table */}
+      {selectedModels.length >= 2 ? (
+        <>
+          <section>
+            <CostCalculator models={selectedModels} />
+          </section>
+
+          {/* 3. Comparison Matrix Grid */}
+          <section className="space-y-3">
+            <h2 className="text-base font-bold text-slate-900 dark:text-zinc-100">
+              Technical Specifications & Pricing Matrix
+            </h2>
+            <ComparisonTable
+              models={selectedModels}
+              onRemoveModel={handleRemoveModel}
+            />
+          </section>
+        </>
+      ) : (
+        <section className="space-y-3">
+          <ComparisonTable
+            models={selectedModels}
+            onRemoveModel={handleRemoveModel}
+          />
         </section>
       )}
-
-      {/* 3. Comparison Matrix Grid */}
-      <section className="space-y-3">
-        <h2 className="text-base font-bold text-slate-900 dark:text-zinc-100">
-          Technical Specifications & Pricing Matrix
-        </h2>
-        <ComparisonTable
-          models={selectedModels}
-          onRemoveModel={handleRemoveModel}
-        />
-      </section>
     </div>
   );
 }

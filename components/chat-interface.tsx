@@ -91,7 +91,19 @@ export function ChatInterface({ models, initialModelId }: ChatInterfaceProps) {
     };
 
     const newConversation = [...messages, userMessage];
-    setMessages(newConversation);
+
+    const startTime = Date.now();
+    const assistantId = `assistant-${Date.now()}`;
+    const assistantPlaceholder: ChatMessage = {
+      id: assistantId,
+      role: "assistant",
+      content: "",
+      timestamp: Date.now(),
+      modelId: selectedModel.id,
+      modelName: selectedModel.name,
+    };
+
+    setMessages([...newConversation, assistantPlaceholder]);
     setPrompt("");
     setIsLoading(true);
 
@@ -105,25 +117,89 @@ export function ChatInterface({ models, initialModelId }: ChatInterfaceProps) {
             role: m.role,
             content: m.content,
           })),
+          stream: true,
         }),
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        let errText = "Failed to receive a response from the model.";
+        try {
+          const errJson = await response.json();
+          if (errJson?.error) errText = errJson.error;
+        } catch {
+          // ignore fallback
+        }
+        setErrorMessage(errText);
+        setMessages(newConversation); // remove empty placeholder
+        return;
+      }
 
-      if (!response.ok || !data.success) {
-        setErrorMessage(data.error || "Failed to receive a response from the model.");
+      const contentType = response.headers.get("content-type") || "";
+
+      if (contentType.includes("text/event-stream") && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
+              try {
+                const parsed = JSON.parse(trimmed.slice(6));
+                const delta = parsed.choices?.[0]?.delta?.content;
+                if (delta) {
+                  accumulated += delta;
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantId ? { ...msg, content: accumulated } : msg
+                    )
+                  );
+                }
+              } catch {
+                // partial chunk
+              }
+            }
+          }
+        }
+
+        const durationMs = Date.now() - startTime;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantId
+              ? {
+                  ...msg,
+                  content: accumulated || "(Empty response received)",
+                  durationMs,
+                }
+              : msg
+          )
+        );
       } else {
-        const assistantMessage: ChatMessage = {
-          id: data.historyId || `assistant-${Date.now()}`,
-          role: "assistant",
-          content: data.response || "(Empty response)",
-          timestamp: Date.now(),
-          modelId: data.modelId || selectedModel.id,
-          modelName: data.modelName || selectedModel.name,
-          tokens: data.usage,
-          durationMs: data.durationMs,
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
+        const data = await response.json();
+        if (!data.success) {
+          setErrorMessage(data.error || "Failed to receive a response from the model.");
+          setMessages(newConversation);
+        } else {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantId
+                ? {
+                    ...msg,
+                    content: data.response || "(Empty response)",
+                    durationMs: data.durationMs,
+                    tokens: data.usage,
+                  }
+                : msg
+            )
+          );
+        }
       }
     } catch (err: unknown) {
       setErrorMessage(
@@ -131,6 +207,7 @@ export function ChatInterface({ models, initialModelId }: ChatInterfaceProps) {
           ? err.message
           : "Network error occurred while contacting the server."
       );
+      setMessages(newConversation);
     } finally {
       setIsLoading(false);
     }
@@ -285,7 +362,18 @@ export function ChatInterface({ models, initialModelId }: ChatInterfaceProps) {
                 )}
 
                 {/* Message Content */}
-                <div className="whitespace-pre-wrap font-sans">{msg.content}</div>
+                <div className="whitespace-pre-wrap font-sans">
+                  {msg.content ? (
+                    msg.content
+                  ) : isLoading && msg.role === "assistant" ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-zinc-500 font-mono">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                      Streaming live tokens...
+                    </span>
+                  ) : (
+                    "(Empty response)"
+                  )}
+                </div>
               </div>
 
               {msg.role === "user" && (
@@ -300,7 +388,7 @@ export function ChatInterface({ models, initialModelId }: ChatInterfaceProps) {
         )}
 
         {/* Loading Indicator */}
-        {isLoading && (
+        {isLoading && messages[messages.length - 1]?.role === "user" && (
           <div className="flex gap-3 max-w-xl mr-auto justify-start animate-in fade-in-0 duration-200">
             <div className="shrink-0 mt-1">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 dark:bg-emerald-500/15 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
@@ -309,7 +397,7 @@ export function ChatInterface({ models, initialModelId }: ChatInterfaceProps) {
             </div>
             <div className="rounded-2xl rounded-bl-xs bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 text-xs text-slate-500 dark:text-zinc-400 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>Generating response with {selectedModel.name}...</span>
+              <span>Connecting to {selectedModel.name}...</span>
             </div>
           </div>
         )}

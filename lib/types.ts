@@ -94,3 +94,4 @@ export interface ChatApiResponse {
   historyId?: string;
   isSimulated?: boolean;
 }
+

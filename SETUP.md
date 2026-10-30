@@ -132,3 +132,4 @@ The application was built following a **mobile-first, content-preserving respons
    - `DATABASE_URL`: Your production database URL (e.g. Neon PostgreSQL, Supabase, or Vercel Postgres).
 4. For PostgreSQL on Vercel, change `provider = "sqlite"` to `provider = "postgresql"` in `prisma/schema.prisma`.
 5. Deploy! Vercel runs `npm run postinstall` (generating Prisma client) and `npm run build` automatically.
+

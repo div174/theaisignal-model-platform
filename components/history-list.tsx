@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { RequestHistoryItem, AIModel } from "@/lib/types";
 import { BrandLogo } from "./brand-logo";
 import { formatTokens } from "@/lib/data";
@@ -15,6 +15,8 @@ import {
   Sparkles,
   RefreshCw,
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 interface HistoryListProps {
@@ -30,6 +32,10 @@ export function HistoryList({ models }: HistoryListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [copied, setCopied] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
   const fetchHistory = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -42,6 +48,7 @@ export function HistoryList({ models }: HistoryListProps) {
       const data = await res.json();
       if (res.ok && data.success) {
         setHistory(data.history || []);
+        setCurrentPage(1); // reset to first page on new query
       } else {
         setError(data.error || "Failed to load request history.");
       }
@@ -65,6 +72,7 @@ export function HistoryList({ models }: HistoryListProps) {
         if (!ignore) {
           if (res.ok && data.success) {
             setHistory(data.history || []);
+            setCurrentPage(1);
           } else {
             setError(data.error || "Failed to load request history.");
           }
@@ -131,6 +139,13 @@ export function HistoryList({ models }: HistoryListProps) {
     }
   };
 
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(history.length / itemsPerPage));
+  const paginatedHistory = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return history.slice(start, start + itemsPerPage);
+  }, [history, currentPage]);
+
   return (
     <div className="space-y-6">
       {/* Search and Filters Toolbar */}
@@ -146,7 +161,7 @@ export function HistoryList({ models }: HistoryListProps) {
           />
           <button
             type="submit"
-            className="absolute right-1.5 top-1.5 px-2.5 py-1 text-xs rounded-lg bg-emerald-500 text-slate-950 font-semibold hover:bg-emerald-400 transition-colors"
+            className="absolute right-1.5 top-1.5 px-2.5 py-1 text-xs rounded-lg bg-emerald-500 text-slate-950 font-semibold hover:bg-emerald-400 transition-colors cursor-pointer"
           >
             Search
           </button>
@@ -157,7 +172,7 @@ export function HistoryList({ models }: HistoryListProps) {
           <select
             value={filterModel}
             onChange={(e) => setFilterModel(e.target.value)}
-            className="px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 text-slate-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 text-slate-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
           >
             <option value="all">All Models</option>
             {models.map((m) => (
@@ -171,7 +186,7 @@ export function HistoryList({ models }: HistoryListProps) {
           <button
             type="button"
             onClick={fetchHistory}
-            className="p-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors"
+            className="p-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             title="Refresh logs"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
@@ -182,7 +197,7 @@ export function HistoryList({ models }: HistoryListProps) {
             <button
               type="button"
               onClick={() => handleDelete()}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-400 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-400 transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Clear All</span>
@@ -217,7 +232,7 @@ export function HistoryList({ models }: HistoryListProps) {
             No request history recorded yet
           </h3>
           <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-sm mx-auto mt-1">
-            Prompt generations sent from the AI Playground will be saved to your local database and displayed here.
+            Prompt generations sent from the AI Playground will be saved to your database and displayed here.
           </p>
         </div>
       )}
@@ -225,7 +240,7 @@ export function HistoryList({ models }: HistoryListProps) {
       {/* History Items Grid / List */}
       {!isLoading && history.length > 0 && (
         <div className="space-y-3">
-          {history.map((item) => {
+          {paginatedHistory.map((item) => {
             const labName = item.modelId.split("/")[0] || "ai";
             return (
               <div
@@ -249,12 +264,17 @@ export function HistoryList({ models }: HistoryListProps) {
                       <Clock className="w-3 h-3" />
                       {formatDate(item.createdAt)}
                     </span>
-                    {item.totalTokens && (
+                    {item.totalTokens ? (
                       <span className="flex items-center gap-1">
                         <Coins className="w-3 h-3" />
                         {formatTokens(item.totalTokens)} tokens
                       </span>
-                    )}
+                    ) : item.durationMs ? (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {(item.durationMs / 1000).toFixed(2)}s
+                      </span>
+                    ) : null}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -287,6 +307,42 @@ export function HistoryList({ models }: HistoryListProps) {
               </div>
             );
           })}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-zinc-800">
+              <span className="text-xs text-slate-500 dark:text-zinc-400">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                {Math.min(currentPage * itemsPerPage, history.length)} of {history.length} logged queries
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Previous</span>
+                </button>
+
+                <span className="text-xs font-mono text-slate-600 dark:text-zinc-400 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -312,7 +368,7 @@ export function HistoryList({ models }: HistoryListProps) {
                 <button
                   type="button"
                   onClick={() => copyToClipboard(selectedRecord.response)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 cursor-pointer"
                 >
                   {copied ? (
                     <Check className="w-3.5 h-3.5 text-emerald-500" />
@@ -324,7 +380,7 @@ export function HistoryList({ models }: HistoryListProps) {
                 <button
                   type="button"
                   onClick={() => setSelectedRecord(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200"
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>

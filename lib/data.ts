@@ -318,3 +318,4 @@ export function formatCurrency(amount: number, maxDecimals = 4): string {
 export function formatTokens(tokens: number): string {
   return tokens.toLocaleString("en-US");
 }
+
