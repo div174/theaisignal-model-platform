@@ -8,17 +8,21 @@
     --foreground: #090d16;
     --card: #ffffff;
     --card-foreground: #090d16;
+    --card-subtle: #f1f5f9;
     --border: #e2e8f0;
-    --accent: #10b981;
+    --accent: #059669;
+    --accent-light: rgba(5, 150, 105, 0.08);
   }
 
   .dark {
-    --background: #06090e;
-    --foreground: #f1f5f9;
-    --card: #0f141f;
-    --card-foreground: #f1f5f9;
-    --border: #1e293b;
+    --background: #080c14;
+    --foreground: #f3f4f6;
+    --card: #0e1422;
+    --card-foreground: #f3f4f6;
+    --card-subtle: #141b2d;
+    --border: rgba(255, 255, 255, 0.08);
     --accent: #34d399;
+    --accent-light: rgba(52, 211, 153, 0.12);
   }
 
   * {
@@ -28,22 +32,74 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+}
+
+/* Editorial Serif font utility */
+.font-editorial {
+  font-family: "Georgia", "Cambria", "Times New Roman", Times, serif;
+}
+
+/* Custom range slider styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: #cbd5e1;
+}
+
+.dark input[type="range"]::-webkit-slider-runnable-track {
+  background: #1e293b;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  margin-top: -6px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.dark input[type="range"]::-webkit-slider-thumb {
+  background: #34d399;
+  border: 2px solid #080c14;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.5);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(0.95);
 }
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.2);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.45);
 }

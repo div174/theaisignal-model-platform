@@ -18,20 +18,19 @@ export function BrandLogo({
   const normalized = (lab || name || "").toLowerCase().trim();
 
   const sizeClasses = {
-    sm: "w-4 h-4 text-xs",
-    md: "w-5 h-5 text-sm",
-    lg: "w-7 h-7 text-base",
-    xl: "w-9 h-9 text-lg",
+    sm: "w-3.5 h-3.5 text-xs",
+    md: "w-4 h-4 text-sm",
+    lg: "w-6 h-6 text-base",
+    xl: "w-8 h-8 text-lg",
   };
 
   const containerClasses = {
-    sm: "w-6 h-6",
-    md: "w-8 h-8",
-    lg: "w-10 h-10",
-    xl: "w-12 h-12",
+    sm: "w-6 h-6 rounded-md",
+    md: "w-8 h-8 rounded-lg",
+    lg: "w-10 h-10 rounded-xl",
+    xl: "w-12 h-12 rounded-2xl",
   };
 
-  // Render SVG based on lab
   const renderIcon = () => {
     switch (normalized) {
       case "openai":
@@ -84,7 +83,6 @@ export function BrandLogo({
         );
 
       case "oneatlas":
-        // Platform logo: clean interconnected compass / geometric hexagon with center node
         return (
           <svg className={sizeClasses[size]} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="12 2 2 7 2 17 12 22 22 17 22 7 12 2" />
@@ -97,7 +95,6 @@ export function BrandLogo({
         );
 
       default:
-        // Generic AI lab badge / chip
         return (
           <span className="font-bold uppercase tracking-wider text-[10px]">
             {(lab || name || "AI").slice(0, 2)}
@@ -109,23 +106,23 @@ export function BrandLogo({
   const getLabColor = () => {
     switch (normalized) {
       case "openai":
-        return "bg-zinc-800 text-zinc-100 dark:bg-zinc-800 dark:text-zinc-100 border-zinc-700";
+        return "bg-slate-100 text-slate-800 border-slate-300 dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-700";
       case "anthropic":
-        return "bg-amber-950/40 text-amber-300 dark:bg-amber-950/60 dark:text-amber-200 border-amber-800/60";
+        return "bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800/60";
       case "deepseek":
-        return "bg-blue-950/40 text-blue-300 dark:bg-blue-950/60 dark:text-blue-200 border-blue-800/60";
+        return "bg-blue-50 text-blue-800 border-blue-200/80 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-800/60";
       case "meta":
-        return "bg-indigo-950/40 text-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-200 border-indigo-800/60";
+        return "bg-indigo-50 text-indigo-800 border-indigo-200/80 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-800/60";
       case "google":
-        return "bg-emerald-950/40 text-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200 border-emerald-800/60";
+        return "bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800/60";
       case "mistral":
-        return "bg-orange-950/40 text-orange-300 dark:bg-orange-950/60 dark:text-orange-200 border-orange-800/60";
+        return "bg-orange-50 text-orange-800 border-orange-200/80 dark:bg-orange-950/40 dark:text-orange-200 dark:border-orange-800/60";
       case "qwen":
-        return "bg-purple-950/40 text-purple-300 dark:bg-purple-950/60 dark:text-purple-200 border-purple-800/60";
+        return "bg-purple-50 text-purple-800 border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-200 dark:border-purple-800/60";
       case "oneatlas":
-        return "bg-emerald-500/10 text-emerald-500 dark:bg-emerald-400/15 dark:text-emerald-400 border-emerald-500/30";
+        return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30";
       default:
-        return "bg-zinc-800/60 text-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-700/60";
+        return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700/60";
     }
   };
 
@@ -155,17 +152,16 @@ export function BrandLogo({
   return (
     <div className={`inline-flex items-center gap-2 ${className}`}>
       <div
-        className={`inline-flex items-center justify-center rounded-lg border ${containerClasses[size]} ${getLabColor()} shadow-xs shrink-0`}
+        className={`inline-flex items-center justify-center border ${containerClasses[size]} ${getLabColor()} shadow-xs shrink-0 transition-transform group-hover:scale-105`}
         title={formatLabName(normalized)}
       >
         {renderIcon()}
       </div>
       {showText && (
-        <span className="text-xs font-medium text-zinc-300">
+        <span className="text-xs font-medium text-slate-700 dark:text-zinc-300">
           {formatLabName(normalized)}
         </span>
       )}
     </div>
   );
 }
-

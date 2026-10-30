@@ -155,7 +155,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const aiContent = aiResult.content || "";
+    const aiContent = aiResult.content?.trim() ? aiResult.content : "";
+    if (!aiContent) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "AI provider returned empty response.",
+          durationMs: aiResult.durationMs,
+        },
+        { status: 502 }
+      );
+    }
 
     let historyRecord = null;
     try {
